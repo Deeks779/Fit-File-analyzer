@@ -8,7 +8,7 @@ export default function Dashboard() {
   const [selectedId, setSelectedId] = useState("");
   const [activity, setActivity] = useState(null);
   const [tab, setTab] = useState("summary");
-  const [field, setField] = useState("speed");
+  const [field, setField] = useState("");
 
   // Fetch all activities
   useEffect(() => {
@@ -26,18 +26,17 @@ export default function Dashboard() {
       .then(data => {
         setActivity(data);
 
-        // auto pick first numeric field
-        const firstField =
-          Object.keys(data.graphData?.[0] || {}).find(
-            k => k !== "time" && typeof data.graphData[0][k] === "number"
-          ) || "speed";
+        const keys = Object.keys(data.graphData?.[0] || {})
+          .filter(k => k !== "time" && typeof data.graphData[0][k] === "number");
 
-        setField(firstField);
+        setField(keys[0] || "");
       });
   }, [selectedId]);
 
   const graphData = activity?.graphData || [];
   const tableData = activity?.tableData || [];
+
+  const hasGPS = graphData.some(d => d.lat && d.lon);
 
   return (
     <div className="min-h-screen bg-gray-100 p-6">
@@ -87,11 +86,18 @@ export default function Dashboard() {
           {/* SUMMARY */}
           {tab === "summary" && (
             <div className="grid md:grid-cols-3 gap-4">
+
               <Card title="Distance" value={`${activity.summary.distance} m`} />
               <Card title="Duration" value={`${activity.summary.duration} sec`} />
-              <Card title="Avg Speed" value={`${activity.summary.avgSpeed?.toFixed(2)} m/s`} />
-              <Card title="Max Speed" value={`${activity.summary.maxSpeed?.toFixed(2)} m/s`} />
               <Card title="Calories" value={`${activity.summary.calories}`} />
+
+              <Card title="Avg Speed" value={format(activity.summary.avgSpeed, "m/s")} />
+              <Card title="Max Speed" value={format(activity.summary.maxSpeed, "m/s")} />
+
+              {/* NEW (monitoring support) */}
+              <Card title="Steps" value={activity.summary.totalSteps} />
+              <Card title="Avg Intensity" value={format(activity.summary.avgIntensity)} />
+
               <Card title="Sport" value={activity.summary.sport} />
             </div>
           )}
@@ -115,18 +121,26 @@ export default function Dashboard() {
                 </select>
               </div>
 
-              <LineChart
-                data={graphData}
-                dataKey={field}
-                label={field}
-              />
+              {field && (
+                <LineChart
+                  data={graphData}
+                  dataKey={field}
+                  label={field}
+                />
+              )}
             </div>
           )}
 
-          {/* MAP */}
+          {/* MAP (only if GPS exists) */}
           {tab === "map" && (
             <div className="bg-white p-6 rounded-xl shadow">
-              <MapView data={graphData} />
+              {hasGPS ? (
+                <MapView data={graphData} />
+              ) : (
+                <div className="text-center text-gray-500 py-10">
+                  🗺️ No GPS data available
+                </div>
+              )}
             </div>
           )}
 
@@ -150,7 +164,14 @@ export default function Dashboard() {
   );
 }
 
-// 🔹 Reusable components
+// 🔹 UTIL
+function format(value, unit = "") {
+  if (value == null) return "-";
+  if (typeof value === "number") return `${value.toFixed(2)} ${unit}`;
+  return value;
+}
+
+// 🔹 CARD
 function Card({ title, value }) {
   return (
     <div className="bg-white p-4 rounded-xl shadow">
@@ -160,6 +181,7 @@ function Card({ title, value }) {
   );
 }
 
+// 🔹 BOX
 function Box({ title, data }) {
   return (
     <div className="bg-white p-4 rounded-xl shadow overflow-auto">
