@@ -20,14 +20,16 @@ function haversine(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
-// POST /upload
+function semicirclesToDegrees(sc) {
+  return sc * (180 / Math.pow(2, 31));
+}
+
 exports.uploadActivity = async (req, res) => {
   try {
     const file = req.file;
     if (!file) return res.status(400).json({ message: "No file uploaded" });
 
     const fitParser = new FitParser({ mode: "list", force: true });
-
     const buffer = fs.readFileSync(file.path);
 
     fitParser.parse(buffer, async (error, data) => {
@@ -35,52 +37,74 @@ exports.uploadActivity = async (req, res) => {
         return res.status(500).json({ message: "FIT parse error" });
       }
 
-      // GROUP ALL DATA
-      const messages = {
-        file_id: data.file_id || {},
-        device_info: data.device_info || {},
-        user_profile: data.user_profile || {},
-        session: data.session || {},
-        lap: data.lap || [],
-        record: data.records || [],
-        event: data.events || [],
-        monitoring: data.monitoring || [],
-      };
-
-      // SUMMARY CALCULATION
+      // ---------- DETECT DATA ----------
       const records = data.records || [];
+      const laps = data.laps || data.lap || [];
+      const session = data.session || {};
+      const device = data.device_info?.[0] || {};
+      const fileId = data.file_id || {};
 
-      const heartRates = records
-        .map(r => r.heart_rate)
-        .filter(Boolean);
+      // ---------- GRAPH DATA ----------
+      let graphData = [];
 
-      const avgHR = heartRates.length
-        ? heartRates.reduce((a, b) => a + b, 0) / heartRates.length
-        : 0;
+      if (records.length > 0) {
+        graphData = records.map(r => ({
+          time: r.timestamp,
+          lat: r.position_lat ? semicirclesToDegrees(r.position_lat) : null,
+          lon: r.position_long ? semicirclesToDegrees(r.position_long) : null,
+          distance: r.distance || 0,
+          speed: r.speed || 0,
+          altitude: r.altitude || 0,
+        }));
+      }
 
-      const maxHR = heartRates.length
-        ? Math.max(...heartRates)
-        : 0;
-
+      // ---------- DERIVED ANALYTICS ----------
       const speeds = records.map(r => r.speed).filter(Boolean);
       const avgSpeed = speeds.length
         ? speeds.reduce((a, b) => a + b, 0) / speeds.length
         : 0;
 
+      const maxSpeed = speeds.length ? Math.max(...speeds) : 0;
+
+      // Distance fallback (if no session)
+      let totalDistance = session.total_distance || 0;
+      if (!totalDistance && records.length > 1) {
+        totalDistance = records[records.length - 1].distance || 0;
+      }
+
+      // ---------- SUMMARY ----------
+      const summary = {
+        distance: totalDistance,
+        duration: session.total_timer_time || 0,
+        avgSpeed,
+        maxSpeed,
+        calories: session.total_calories || 0,
+        sport: session.sport || "unknown",
+        totalLaps: laps.length,
+      };
+
+      // ---------- TABLE DATA (VERY IMPORTANT) ----------
+      const tableData = graphData.map(d => ({
+        time: d.time,
+        distance: d.distance,
+        speed: d.speed,
+        altitude: d.altitude,
+      }));
+
+      // ---------- SAVE ----------
       const activity = new Activity({
         fileName: file.originalname,
 
-        summary: {
-          distance: data.session?.total_distance || 0,
-          duration: data.session?.total_timer_time || 0,
-          avgHeartRate: avgHR,
-          maxHeartRate: maxHR,
-          avgSpeed,
-          calories: data.session?.total_calories || 0,
-          type: data.session?.sport || "unknown",
-        },
+        summary,
+        graphData,
+        tableData,
 
-        messages,
+        laps,
+        session,
+        device,
+        fileId,
+
+        rawData: data, // 🔥 for future ML / debugging
       });
 
       await activity.save();
@@ -92,6 +116,7 @@ exports.uploadActivity = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
 exports.getActivity = async (req, res) => {
   try {
     const Activity = require("../models/Activity");

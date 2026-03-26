@@ -3,6 +3,7 @@ import Home from "./pages/Home";
 import Upload from "./pages/Upload";
 import Dashboard from "./pages/Dashboard";
 import Navbar from "./Components/Navbar"
+import "leaflet/dist/leaflet.css";
 
 function App() {
   return (

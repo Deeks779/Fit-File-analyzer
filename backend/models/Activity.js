@@ -5,31 +5,50 @@ if (mongoose.models.Activity) {
   delete mongoose.models.Activity;
 }
 
-const ActivitySchema = new mongoose.Schema(
-  {
-    fileName: {
-      type: String,
-      required: true,
-    },
+const ActivitySchema = new mongoose.Schema({
+  fileName: String,
 
-    // ✅ structured summary (safe now)
-    summary: {
-      distance: { type: Number, default: 0 },
-      duration: { type: Number, default: 0 },
-      avgHeartRate: { type: Number, default: 0 },
-      maxHeartRate: { type: Number, default: 0 },
-      avgSpeed: { type: Number, default: 0 },
-      calories: { type: Number, default: 0 },
-      type: { type: String, default: "unknown" },
-    },
-
-    // ✅ flexible full FIT data
-    messages: {
-      type: mongoose.Schema.Types.Mixed,
-      default: {},
-    },
+  summary: {
+    distance: Number,
+    duration: Number,
+    avgSpeed: Number,
+    maxSpeed: Number,
+    calories: Number,
+    sport: String,
+    totalLaps: Number,
   },
-  { timestamps: true }
-);
+
+  // 📊 For charts
+  graphData: [
+    {
+      time: Number,
+      lat: Number,
+      lon: Number,
+      distance: Number,
+      speed: Number,
+      altitude: Number,
+    },
+  ],
+
+  // 📋 For tables
+  tableData: [
+    {
+      time: Number,
+      distance: Number,
+      speed: Number,
+      altitude: Number,
+    },
+  ],
+
+  // 🧾 Extra structured data
+  laps: Array,
+  session: Object,
+  device: Object,
+  fileId: Object,
+
+  // 🔥 raw backup (very important)
+  rawData: Object,
+
+}, { timestamps: true });
 
 module.exports = mongoose.model("Activity", ActivitySchema);

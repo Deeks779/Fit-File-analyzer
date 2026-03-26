@@ -1,10 +1,10 @@
 import { useState } from "react";
 
-export default function DataTable({ data }) {
+export default function DataTable({ data = [] }) {
   const [page, setPage] = useState(0);
   const pageSize = 10;
 
-  if (!data.length) {
+  if (!data || data.length === 0) {
     return (
       <div className="text-center text-gray-500 py-10">
         📄 No data available
@@ -24,11 +24,8 @@ export default function DataTable({ data }) {
     <div className="bg-white rounded-2xl shadow p-4">
       <h2 className="font-semibold mb-4">📋 Data Table</h2>
 
-      {/* Table Container */}
       <div className="overflow-auto max-h-100 border rounded-lg">
         <table className="min-w-full text-sm text-left">
-          
-          {/* Header */}
           <thead className="bg-gray-100 sticky top-0 z-10">
             <tr>
               {cols.map((c) => (
@@ -39,16 +36,14 @@ export default function DataTable({ data }) {
             </tr>
           </thead>
 
-          {/* Body */}
           <tbody>
             {currentData.map((row, i) => (
-              <tr
-                key={i}
-                className="border-t hover:bg-gray-50 transition"
-              >
+              <tr key={i} className="border-t hover:bg-gray-50 transition">
                 {cols.map((c) => (
                   <td key={c} className="px-3 py-2 text-gray-700">
-                    {String(row[c])}
+                    {c === "time"
+                      ? new Date(row[c]).toLocaleTimeString()
+                      : String(row[c] ?? "-")}
                   </td>
                 ))}
               </tr>
@@ -57,7 +52,6 @@ export default function DataTable({ data }) {
         </table>
       </div>
 
-      {/* Pagination */}
       <div className="flex justify-between items-center mt-4">
         <p className="text-sm text-gray-500">
           Page {page + 1} of {totalPages}
@@ -69,7 +63,7 @@ export default function DataTable({ data }) {
             disabled={page === 0}
             className={`px-3 py-1 rounded-lg text-sm ${
               page === 0
-                ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                ? "bg-gray-200 text-gray-400"
                 : "bg-gray-100 hover:bg-gray-200"
             }`}
           >
@@ -81,7 +75,7 @@ export default function DataTable({ data }) {
             disabled={page >= totalPages - 1}
             className={`px-3 py-1 rounded-lg text-sm ${
               page >= totalPages - 1
-                ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                ? "bg-gray-200 text-gray-400"
                 : "bg-blue-500 text-white hover:bg-blue-600"
             }`}
           >

@@ -1,20 +1,7 @@
 import { MapContainer, TileLayer, Polyline, Marker, useMap } from "react-leaflet";
-import L from "leaflet";
 import { useEffect } from "react";
 
-// Fix marker icons
-delete L.Icon.Default.prototype._getIconUrl;
-
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl:
-    "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png",
-  iconUrl:
-    "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
-  shadowUrl:
-    "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
-});
-
-// Auto fit bounds
+// ✅ ADD THIS
 function FitBounds({ positions }) {
   const map = useMap();
 
@@ -27,9 +14,9 @@ function FitBounds({ positions }) {
   return null;
 }
 
-export default function MapView({ data }) {
+export default function MapView({ data = [] }) {
   const positions = data
-    .filter((d) => d.lat && d.lon)
+    .filter((d) => d.lat != null && d.lon != null)
     .map((d) => [d.lat, d.lon]);
 
   if (positions.length === 0) {
@@ -49,38 +36,20 @@ export default function MapView({ data }) {
           center={positions[0]}
           zoom={13}
           style={{ height: "450px", width: "100%" }}
-          scrollWheelZoom={true}
         >
           <TileLayer
             attribution="&copy; OpenStreetMap contributors"
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
 
-          {/* Auto fit */}
+          {/* ✅ NOW WORKS */}
           <FitBounds positions={positions} />
 
-          {/* Route */}
-          <Polyline
-            positions={positions}
-            pathOptions={{
-              color: "#2563eb",
-              weight: 4,
-              opacity: 0.8,
-            }}
-          />
+          <Polyline positions={positions} pathOptions={{ color: "#2563eb" }} />
 
-          {/* Start Marker */}
           <Marker position={positions[0]} />
-
-          {/* End Marker */}
           <Marker position={positions[positions.length - 1]} />
         </MapContainer>
-      </div>
-
-      {/* Info */}
-      <div className="flex justify-between mt-3 text-sm text-gray-600">
-        <span>Start 🟢</span>
-        <span>End 🔴</span>
       </div>
     </div>
   );
